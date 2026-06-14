@@ -12,6 +12,8 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 OWNER_ID = int(os.environ.get("OWNER_ID", 0))
 SESSION_NAME = "user_session"
 
+print(f"✅ CONFIG: API_ID={API_ID}, OWNER_ID={OWNER_ID}, BOT_TOKEN={'set' if BOT_TOKEN else 'MISSING'}")
+
 # ─── CLIENTS ──────────────────────────────────────────────
 bot = Client("bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 user = Client(SESSION_NAME, api_id=API_ID, api_hash=API_HASH)
@@ -21,7 +23,9 @@ pending_topics = {}  # tasdiqlash kutayotgan topic so'rovlar
 
 def owner_only(func):
     async def wrapper(client, message):
-        if message.from_user.id != OWNER_ID:
+        uid = message.from_user.id
+        print(f"📩 Xabar keldi: from_id={uid}, OWNER_ID={OWNER_ID}, match={uid == OWNER_ID}")
+        if uid != OWNER_ID:
             await message.reply("❌ Ruxsat yo'q.")
             return
         return await func(client, message)
