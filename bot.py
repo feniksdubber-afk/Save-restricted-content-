@@ -6,7 +6,6 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from pyrogram import Client
-from pyrogram.errors import SessionPasswordNeeded, PhoneCodeInvalid, PhoneCodeExpired
 
 logging.basicConfig(level=logging.INFO)
 
@@ -20,42 +19,53 @@ print(f"✅ CONFIG: API_ID={API_ID}, OWNER_ID={OWNER_ID}")
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
-
-# Session string orqali ulanamiz
 user = Client("user", api_id=API_ID, api_hash=API_HASH, session_string=SESSION_STRING)
 
 def parse_tme_link(text):
-    # private: t.me/c/CHATID/TOPICID/MSGID yoki t.me/c/CHATID/MSGID
-    pattern = r"https?://t\.me/c/(\d+)/(\d+)(?:/(\d+))?"
-    match = re.search(pattern, text)
-    if match:
-        chat_id = int("-100" + match.group(1))
-        # 3 qism bo'lsa: /CHATID/TOPICID/MSGID → msg_id oxirgisi
-        msg_id = int(match.group(3)) if match.group(3) else int(match.group(2))
+    # t.me/c/CHATID/TOPICID/MSGID yoki t.me/c/CHATID/MSGID
+    m = re.search(r"https?://t\.me/c/(\d+)/(\d+)(?:/(\d+))?", text)
+    if m:
+        chat_id = int("-100" + m.group(1))
+        msg_id = int(m.group(3)) if m.group(3) else int(m.group(2))
         return chat_id, msg_id
-    # public: t.me/username/MSGID
-    pattern2 = r"https?://t\.me/([^/]+)/(\d+)"
-    match2 = re.search(pattern2, text)
-    if match2:
-        return match2.group(1), int(match2.group(2))
+    # t.me/username/MSGID
+    m2 = re.search(r"https?://t\.me/([^/c][^/]*)/(\d+)", text)
+    if m2:
+        return m2.group(1), int(m2.group(2))
     return None, None
 
-def owner(message: Message) -> bool:
-    return message.from_user.id == OWNER_ID
+def owner(m: Message):
+    return m.from_user.id == OWNER_ID
 
 @dp.message(Command("start"))
 async def start(message: Message):
     if not owner(message): return
-    await message.answer("✅ Bot tayyor!\n\n• Havola → bitta media\n• /topic [havola] → topic ichidagi barchasi\n• /status")
+    await message.answer("✅ Bot tayyor!\n\n• Havola → bitta media\n• /topic [havola] → topic\n• /status\n• /dialogs — guruhlar ro'yxati")
 
 @dp.message(Command("status"))
 async def status(message: Message):
     if not owner(message): return
     try:
         me = await user.get_me()
-        await message.answer(f"✅ Ulangan: {me.first_name} ({me.phone_number})")
+        await message.answer(f"✅ {me.first_name} ({me.phone_number})")
     except Exception as e:
-        await message.answer(f"❌ Xato: {e}")
+        await message.answer(f"❌ {e}")
+
+@dp.message(Command("dialogs"))
+async def dialogs(message: Message):
+    if not owner(message): return
+    proc = await message.answer("🔍 Guruhlar yuklanmoqda...")
+    try:
+        lines = []
+        async for dialog in user.get_dialogs():
+            chat = dialog.chat
+            if chat.type.name in ("GROUP", "SUPERGROUP", "CHANNEL"):
+                lines.append(f"• {chat.title} | `{chat.id}`")
+            if len(lines) >= 30:
+                break
+        await proc.edit_text("📋 Guruhlar:\n\n" + "\n".join(lines), parse_mode="markdown")
+    except Exception as e:
+        await proc.edit_text(f"❌ {e}")
 
 @dp.message(Command("topic"))
 async def topic_cmd(message: Message):
@@ -83,52 +93,51 @@ async def topic_cmd(message: Message):
             await proc.edit_text(f"📦 {count} ta yuborilmoqda...")
             await send_media(message.chat.id, chat_id, media_msgs, proc)
         else:
+            ids_str = ",".join(map(str, media_msgs))
             kb = InlineKeyboardMarkup(inline_keyboard=[[
-                InlineKeyboardButton(text="✅ Ha", callback_data=f"yes_{chat_id}_{','.join(map(str,media_msgs))}"),
-                InlineKeyboardButton(text="❌ Yo'q", callback_data="no"),
+                InlineKeyboardButton(text="✅ Ha", callback_data=f"y|{chat_id}|{ids_str}"),
+                InlineKeyboardButton(text="❌ Yo'q", callback_data="n"),
             ]])
-            await proc.edit_text(f"⚠️ {count} ta media bor. Yuborilsinmi?", reply_markup=kb)
+            await proc.edit_text(f"⚠️ {count} ta media. Yuborilsinmi?", reply_markup=kb)
     except Exception as e:
         await proc.edit_text(f"❌ {e}")
 
-async def send_media(to_chat_id, from_chat_id, media_msgs, status_msg):
+async def send_media(to_chat, from_chat, ids, status_msg):
     sent = 0
-    for msg_id in media_msgs:
+    for mid in ids:
         try:
-            await user.copy_message(chat_id=to_chat_id, from_chat_id=from_chat_id, message_id=msg_id)
+            await user.copy_message(chat_id=to_chat, from_chat_id=from_chat, message_id=mid)
             sent += 1
             await asyncio.sleep(0.5)
         except:
             pass
-    await status_msg.edit_text(f"✅ {sent}/{len(media_msgs)} yuborildi.")
+    await status_msg.edit_text(f"✅ {sent}/{len(ids)} yuborildi.")
 
 @dp.callback_query()
 async def cb(cq: CallbackQuery):
     if cq.from_user.id != OWNER_ID: return
-    if cq.data == "no":
+    if cq.data == "n":
         await cq.message.edit_text("❌ Bekor.")
-    elif cq.data.startswith("yes_"):
-        parts = cq.data.split("_", 2)
-        chat_id = int(parts[1])
-        media_msgs = list(map(int, parts[2].split(",")))
+    elif cq.data.startswith("y|"):
+        _, chat_id, ids_str = cq.data.split("|", 2)
+        ids = list(map(int, ids_str.split(",")))
         await cq.message.edit_text("📦 Yuborilmoqda...")
-        await send_media(cq.message.chat.id, chat_id, media_msgs, cq.message)
+        await send_media(cq.message.chat.id, int(chat_id), ids, cq.message)
     await cq.answer()
 
 @dp.message(F.text)
 async def handle_text(message: Message):
     if not owner(message): return
     text = message.text.strip()
-
     chat_id, msg_id = parse_tme_link(text)
     if not chat_id:
         await message.answer("❓ Havola yuboring yoki /topic [havola]")
         return
-    proc = await message.answer("⏳ Olinmoqda...")
+    proc = await message.answer(f"⏳ Olinmoqda...\n`chat_id={chat_id}`", parse_mode="markdown")
     try:
         msg = await user.get_messages(chat_id, msg_id)
         if msg.empty:
-            await proc.edit_text("❌ Topilmadi.")
+            await proc.edit_text("❌ Xabar topilmadi.")
             return
         await user.copy_message(chat_id=message.chat.id, from_chat_id=chat_id, message_id=msg_id)
         await proc.delete()
@@ -138,8 +147,8 @@ async def handle_text(message: Message):
 async def main():
     await user.start()
     me = await user.get_me()
-    print(f"✅ User ulandi: {me.first_name}")
-    print("🤖 Bot polling boshlandi...")
+    print(f"✅ User: {me.first_name} ({me.phone_number})")
+    print("🤖 Polling boshlandi...")
     await dp.start_polling(bot)
 
 asyncio.run(main())
