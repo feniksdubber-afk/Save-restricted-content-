@@ -41,7 +41,7 @@ def owner(message: Message) -> bool:
 async def start(message: Message):
     print(f"📩 /start: {message.from_user.id}")
     if not owner(message): return
-    if await user.is_connected():
+    if user.is_connected:
         await message.answer("✅ Ulangan.\n\n• Havola → bitta media\n• /topic [havola] → topic ichidagi barchasi\n• /status\n• /logout")
     else:
         await message.answer("👋 /login yozing.")
@@ -50,7 +50,7 @@ async def start(message: Message):
 @dp.message(Command("status"))
 async def status(message: Message):
     if not owner(message): return
-    if await user.is_connected():
+    if user.is_connected:
         me = await user.get_me()
         await message.answer(f"✅ {me.first_name} ({me.phone_number})")
     else:
@@ -60,7 +60,7 @@ async def status(message: Message):
 @dp.message(Command("login"))
 async def login_start(message: Message):
     if not owner(message): return
-    if await user.is_connected():
+    if user.is_connected:
         await message.answer("✅ Allaqachon ulangansiz.")
         return
     login_state[message.from_user.id] = {"step": "phone"}
@@ -70,7 +70,7 @@ async def login_start(message: Message):
 @dp.message(Command("logout"))
 async def logout(message: Message):
     if not owner(message): return
-    if await user.is_connected():
+    if user.is_connected:
         await user.stop()
         if os.path.exists(f"{SESSION_NAME}.session"):
             os.remove(f"{SESSION_NAME}.session")
@@ -82,7 +82,7 @@ async def logout(message: Message):
 @dp.message(Command("topic"))
 async def topic_cmd(message: Message):
     if not owner(message): return
-    if not await user.is_connected():
+    if not user.is_connected:
         await message.answer("❌ /login yozing.")
         return
     args = message.text.split(maxsplit=1)
@@ -198,7 +198,7 @@ async def handle_text(message: Message):
     if not chat_id:
         await message.answer("❓ Havola yuboring yoki /topic [havola]")
         return
-    if not await user.is_connected():
+    if not user.is_connected:
         await message.answer("❌ /login yozing.")
         return
     proc = await message.answer("⏳ Olinmoqda...")
