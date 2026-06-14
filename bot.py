@@ -25,12 +25,20 @@ dp = Dispatcher()
 user = Client("user", api_id=API_ID, api_hash=API_HASH, session_string=SESSION_STRING)
 
 def parse_tme_link(text):
-    pattern = r"https?://t\.me/(c/(\d+)|([^/]+))/(\d+)"
+    # private: t.me/c/CHATID/TOPICID/MSGID yoki t.me/c/CHATID/MSGID
+    pattern = r"https?://t\.me/c/(\d+)/(\d+)(?:/(\d+))?"
     match = re.search(pattern, text)
-    if not match:
-        return None, None
-    chat_id = int("-100" + match.group(2)) if match.group(2) else match.group(3)
-    return chat_id, int(match.group(4))
+    if match:
+        chat_id = int("-100" + match.group(1))
+        # 3 qism bo'lsa: /CHATID/TOPICID/MSGID → msg_id oxirgisi
+        msg_id = int(match.group(3)) if match.group(3) else int(match.group(2))
+        return chat_id, msg_id
+    # public: t.me/username/MSGID
+    pattern2 = r"https?://t\.me/([^/]+)/(\d+)"
+    match2 = re.search(pattern2, text)
+    if match2:
+        return match2.group(1), int(match2.group(2))
+    return None, None
 
 def owner(message: Message) -> bool:
     return message.from_user.id == OWNER_ID
