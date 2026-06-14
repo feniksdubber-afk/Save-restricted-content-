@@ -302,7 +302,13 @@ async def main():
 
     await bot.start()
     print("🤖 Bot ishga tushdi")
-    await asyncio.Event().wait()
+
+    from pyrogram.idle import idle
+    await idle()
+
+    await bot.stop()
+    if await user.is_connected():
+        await user.stop()
 
 if __name__ == "__main__":
     asyncio.run(main())
