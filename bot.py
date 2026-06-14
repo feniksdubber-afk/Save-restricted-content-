@@ -63,7 +63,7 @@ async def dialogs(message: Message):
                 lines.append(f"• {chat.title} | `{chat.id}`")
             if len(lines) >= 30:
                 break
-        await proc.edit_text("📋 Guruhlar:\n\n" + "\n".join(lines), parse_mode="markdown")
+        await proc.edit_text("📋 Guruhlar:\n\n" + "\n".join(lines))
     except Exception as e:
         await proc.edit_text(f"❌ {e}")
 
