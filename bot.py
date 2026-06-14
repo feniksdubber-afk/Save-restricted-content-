@@ -46,7 +46,7 @@ def parse_tme_link(text):
     return chat_id, msg_id
 
 # ─── /start ───────────────────────────────────────────────
-@bot.on_message(filters.command("start") & filters.private)
+@bot.on_message(filters.command("start"))
 @owner_only
 async def start(client, message: Message):
     if await user.is_connected():
@@ -62,7 +62,7 @@ async def start(client, message: Message):
         await message.reply("👋 Salom! Boshlash uchun /login yozing.")
 
 # ─── /status ──────────────────────────────────────────────
-@bot.on_message(filters.command("status") & filters.private)
+@bot.on_message(filters.command("status"))
 @owner_only
 async def status(client, message: Message):
     if await user.is_connected():
@@ -72,7 +72,7 @@ async def status(client, message: Message):
         await message.reply("❌ Akkaunt ulanmagan. /login yozing.")
 
 # ─── /login ───────────────────────────────────────────────
-@bot.on_message(filters.command("login") & filters.private)
+@bot.on_message(filters.command("login"))
 @owner_only
 async def login_start(client, message: Message):
     if await user.is_connected():
@@ -82,7 +82,7 @@ async def login_start(client, message: Message):
     await message.reply("📱 Telefon raqamingizni yuboring:\nMasalan: `+998901234567`", parse_mode="markdown")
 
 # ─── /logout ──────────────────────────────────────────────
-@bot.on_message(filters.command("logout") & filters.private)
+@bot.on_message(filters.command("logout"))
 @owner_only
 async def logout(client, message: Message):
     if await user.is_connected():
@@ -94,7 +94,7 @@ async def logout(client, message: Message):
         await message.reply("Akkaunt ulangan emas.")
 
 # ─── /topic ───────────────────────────────────────────────
-@bot.on_message(filters.command("topic") & filters.private)
+@bot.on_message(filters.command("topic"))
 @owner_only
 async def topic_command(client, message: Message):
     if not await user.is_connected():
@@ -208,7 +208,7 @@ async def callback_handler(client, callback_query):
     await callback_query.answer()
 
 # ─── MATN XABARLAR (login flow + single link) ─────────────
-@bot.on_message(filters.text & filters.private & ~filters.command(["start","login","logout","status","topic"]))
+@bot.on_message(filters.text & ~filters.command(["start","login","logout","status","topic"]))
 @owner_only
 async def handle_text(client, message: Message):
     uid = message.from_user.id
@@ -303,8 +303,7 @@ async def main():
     await bot.start()
     print("🤖 Bot ishga tushdi")
 
-    from pyrogram.idle import idle
-    await idle()
+    await asyncio.Event().wait()
 
     await bot.stop()
     if await user.is_connected():
