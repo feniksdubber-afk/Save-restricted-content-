@@ -47,8 +47,11 @@ def parse_tme_link(text):
 
 # ─── /start ───────────────────────────────────────────────
 @bot.on_message(filters.command("start"))
-@owner_only
 async def start(client, message: Message):
+    print(f"📩 /start keldi: {message.from_user.id}")
+    if message.from_user.id != OWNER_ID:
+        await message.reply("❌ Ruxsat yo'q.")
+        return
     if await user.is_connected():
         await message.reply(
             "✅ Akkauntga ulangan.\n\n"
