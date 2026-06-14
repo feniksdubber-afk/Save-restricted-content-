@@ -1,7 +1,7 @@
 import os
 import re
 import asyncio
-from pyrogram import Client, filters
+from pyrogram import Client, filters, idle
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from pyrogram.errors import SessionPasswordNeeded, PhoneCodeInvalid, PhoneCodeExpired
 
@@ -134,7 +134,7 @@ async def cb(client, cq):
         if not p:
             await cq.message.edit("❌ Topilmadi.")
             return
-        await cq.message.edit(f"📦 Yuborilmoqda...")
+        await cq.message.edit("📦 Yuborilmoqda...")
         await send_media(cq.message, p["chat_id"], p["media_msgs"], cq.message)
     await cq.answer()
 
@@ -205,14 +205,17 @@ async def handle_text(client, message: Message):
     except Exception as e:
         await proc.edit(f"❌ {e}")
 
-async def on_startup():
+async def main():
     if os.path.exists(f"{SESSION_NAME}.session"):
         try:
             await user.start()
             print("✅ User session yuklandi")
         except Exception as e:
             print(f"⚠️ {e}")
-    print("🤖 Bot tayyor")
 
-print("▶️ Ishga tushmoqda...")
-app.run(on_startup())
+    await app.start()
+    print("🤖 Bot tayyor, xabar kutilmoqda...")
+    await idle()
+    await app.stop()
+
+asyncio.run(main())
